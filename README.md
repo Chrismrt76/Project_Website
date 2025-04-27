@@ -13,14 +13,15 @@ Here are some popular options:
 [Digital Ocean](https://github.com/Chrismrt76/Project_Website/blob/main/DigitalOcean)
 ➔ Add a credit card and receive $200 in free credits for 60 days.
 
-Amazon AWS
+[Amazon AWS](https://github.com/Chrismrt76/Project_Website/blob/main/Amazon%20Web%20Services%20(AWS))
 ➔ Get 12 months of free tier services, plus some always-free services.
 
-Microsoft Azure
+[Microsoft Azure](https://github.com/Chrismrt76/Project_Website/blob/main/Microsoft%20Azure)
 ➔ Receive $200 in free credits for 30 days, plus free services for 12 months.
 
-Google Cloud Platform (GCP)
+[Google Cloud Platform (GCP)](https://github.com/Chrismrt76/Project_Website/blob/main/Google%20Cloud%20Platform%20(GCP))
 ➔ Receive $300 in free credits valid for 90 days.
+
 
 Why I Chose AWS
 I personally began my VPS journey with Amazon AWS due to its generous free tier and extensive range of services.
@@ -32,3 +33,4 @@ If there's enough interest, I’ll create detailed guides for setting up on Digi
 
 Next up:
 We'll jump right into launching your first VPS and setting up your website!
+[Setup Amazon LightSail](
