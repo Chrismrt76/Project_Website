@@ -10,7 +10,7 @@ Step 1: Create an Account with a Cloud Provider
 First things first, you'll need to create an account with a cloud service provider.
 Here are some popular options:
 
-[Digital Ocean](/Chrismrt76/Project_Website/blob/main/DigitalOcean)
+[Digital Ocean](/Chrismrt76/Project_Website/main/DigitalOcean)
 ➔ Add a credit card and receive $200 in free credits for 60 days.
 
 Amazon AWS
