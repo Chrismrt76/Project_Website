@@ -1,4 +1,4 @@
-# **Setting Up a Website on Amazon Lightsail (VPS) (H1)**
+Setting Up a Website on Amazon Lightsail (VPS) (H1)
 
 In this guide, I will walk you through setting up a Virtual Private Server (VPS) using Amazon Lightsail. You might wonder why I’m using Lightsail, given that it’s a shared VPS (meaning it shares resources with other users), which can sometimes affect performance and security. The answer is simple: this is a project to showcase skills, practice concepts, and create my first web server on a budget. If you want to invest in more powerful resources or go for a private VPS for better performance and security, feel free to do so.
 
