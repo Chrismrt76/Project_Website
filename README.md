@@ -2,7 +2,7 @@
 
 Hello World! 🌎
 
-Hi, my name is Christian Martinez. I recently completed the ASU Coding Bootcamp, where one of our first projects was to build and deploy a website. Throughout the process, we acquired valuable skills, including setting up a Virtual Private Server (VPS), configuring a Virtual Network, and managing firewall rules — all of which I’ll explain in more detail later in this guide.
+Hi, my name is Christian Martinez. I recently completed the ASU Coding Bootcamp, where one of our first projects was to build and deploy a website. Throughout the process, we acquired valuable skills, including setting up a Virtual Private Server (VPS), configuring a Virtual Network, and managing firewall rules — all of which I’ll explain in more detail later in this guide. I am happy to share what I've learned through the project. This is the first of many that I will be bringing to my GitHub, and I hope you can follow along for the ride!
 
 After setting up the network, we built everything from scratch on a plain Ubuntu server.
 But enough of the background — let’s dive into the good stuff: setting up a website on a VPS!
