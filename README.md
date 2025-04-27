@@ -34,4 +34,4 @@ If there's enough interest, I’ll create detailed guides for setting up on Digi
 
 Next up:
 We'll jump right into launching your first VPS and setting up your website!
-[Setup Amazon LightSail](
+[Setup Amazon LightSail](https://github.com/Chrismrt76/Project_Website/blob/main/Amazon_LightSail)
