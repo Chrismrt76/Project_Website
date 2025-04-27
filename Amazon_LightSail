@@ -1,0 +1,183 @@
+# **Setting Up a Website on Amazon Lightsail (VPS) (H1)**
+
+In this guide, I will walk you through setting up a Virtual Private Server (VPS) using Amazon Lightsail. You might wonder why I’m using Lightsail, given that it’s a shared VPS (meaning it shares resources with other users), which can sometimes affect performance and security. The answer is simple: this is a project to showcase skills, practice concepts, and create my first web server on a budget. If you want to invest in more powerful resources or go for a private VPS for better performance and security, feel free to do so.
+
+Step 1: Open Amazon Lightsail
+Navigate to the AWS Console and use the search bar (next to the AWS logo) to search for "Lightsail."
+
+Click on the Lightsail result that appears.
+
+Step 2: Create a New Instance
+First-Time Users:
+
+You’ll see a pop-up prompt that looks something like this:
+(Insert Image)
+
+Click "Create Instance".
+
+Returning Users:
+
+You’ll find the "Create Instance" button directly on the Lightsail dashboard.
+
+After that, you should arrive at a page similar to this:
+(Insert Image)
+
+Step 3: Choose Your Instance Location (Region & Availability Zone)
+Now, we’ll select the region where your server will be hosted.
+
+Click on "Change AWS Region and Availability Zone".
+(Insert Image)
+
+You can select the region closest to you for the best connection speed.
+If you plan to target users from a specific region, you should consider selecting that region for optimal performance.
+
+For example, I chose Ohio (USA) since I wanted a centralized location to market my services.
+
+Availability Zone:
+For now, you don’t need to worry about selecting a specific availability zone. We will revisit this when discussing redundancy (optional, but highly recommended for production services).
+
+Step 4: Select Your Platform
+Next, you can choose the platform for your server.
+
+You can select Linux/Unix or Windows.
+For this project, we’ll use Linux with the Ubuntu distribution.
+
+(Insert Image)
+
+Note:
+If you’d like a future guide on setting up a Windows VPS, feel free to leave a comment.
+
+Step 5: Choose a Blueprint
+Here, you’ll choose what software will be pre-installed on your server.
+
+While Lightsail offers easy options like WordPress or Nginx, we will start from scratch and manually set up the environment. As my professor used to say:
+
+“You’re here to learn how to build a website from the ground up, not just click buttons.”
+
+To continue:
+
+Select "Operating System (OS) only".
+
+Choose an OS: Amazon Linux 2023, Ubuntu, or Debian.
+I chose Ubuntu because I’m familiar with it, and I intended to use this server for ethical hacking; however, feel free to use whichever operating system you prefer.
+
+(Insert Image)
+
+Step 6: Optional Features
+Now, let’s configure some optional settings for your server:
+
+1. Launch Script
+A launch script helps automate specific steps during the VPS creation process.
+However, we won’t be using this in this guide.
+(Once you become more familiar with the setup, you can definitely explore automation tools to streamline the process.)
+
+2. SSH Key
+Setting up SSH is crucial for remote server access.
+
+SSH allows secure communication with your VPS through TCP port 22.
+
+We’ll set up an SSH key to access the server securely.
+
+To set up an SSH key:
+
+Click "Create custom key".
+
+In the pop-up, select your region.
+(Insert Image)
+
+Give your key a name (e.g., "House_keys").
+Note: Choose a name that’s not too obvious, but don’t rely on obfuscation as security.
+
+Download the private key after naming it. This is your only opportunity to download it, so please store it safely.
+Click "Okay, got it" when done.
+
+Now that the key is set up, we can move on to connecting to your server later.
+
+Setting Up SSH Key on Windows (Using Git Bash)
+Install Git Bash if you don’t already have it. Download it from Git for Windows.
+
+Open Git Bash and generate an SSH key:
+
+bash
+Copy
+Edit
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+Press Enter to save to the default path.
+
+Optionally, you can just enter a passphrase for added security.
+
+Add the SSH key to your agent:
+
+bash
+Copy
+Edit
+eval $(ssh-agent -s)
+ssh-add ~/.ssh/id_rsa
+Upload your public SSH key to Lightsail.
+
+Setting Up SSH Key on Mac
+Open Terminal.
+
+Generate a new SSH key:
+
+bash
+Copy
+Edit
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+Start the SSH agent:
+
+bash
+Copy
+Edit
+eval "$(ssh-agent -s)"
+Add the SSH private key:
+
+bash
+Copy
+Edit
+ssh-add -K ~/.ssh/id_rsa
+Upload your public SSH key to Lightsail.
+
+3. Automatic Snapshots
+I highly recommend enabling Automatic Snapshots. This ensures your server is backed up regularly in case of mistakes or unexpected issues.
+
+Enable automatic snapshots by checking the box next to "Enable Automatic Snapshots".
+
+Set the snapshot time — ideally in the local time zone of your Virtual Private Server (VPS). If you’re a pro, you can keep it set to UTC.
+
+Step 7: Choose Your Instance Plan
+Select the instance size for your Virtual Private Server (VPS). For testing purposes, I started with:
+
+1 GB RAM
+
+2 vCPUs
+
+40 GB SSD storage
+
+2 TB data transfer
+(First 90 days are free)
+
+(Insert Image)
+
+After running a couple of Docker containers and using the server for ethical hacking and website hosting, I upgraded to:
+
+4 GB RAM
+
+2 vCPUs
+
+80 GB SSD storage
+
+4 TB data transfer
+
+The upgrade was necessary to handle more traffic and workloads.
+
+Step 8: Create Instance Name
+Finally, give your instance a name and optionally add a tag to help manage your instance. You can go ahead and skip tagging for now.
+
+Once you've chosen a name, click "Create Instance" and wait for it to be provisioned.
+
+Conclusion
+You’ve successfully set up your VPS on Amazon Lightsail! 🎉
+
+Now, you’re ready to configure your web server and deploy your website. In the next section of the guide, we’ll walk you through the steps for connecting to your VPS via SSH, installing a web server such as Apache or Nginx, and deploying a website.
+
