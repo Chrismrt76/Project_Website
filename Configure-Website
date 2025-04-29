@@ -1,0 +1,209 @@
+1. Opening the Terminal
+First, we need to access a terminal. There are multiple ways to do this, but for simplicity, I’ll use a quick method.
+
+Using the AWS Lightsail Terminal:
+From your Lightsail dashboard, click the terminal icon next to your VPS instance (next to the three-dot menu).
+(Insert image here)
+
+Alternatively, I personally recommend using a third-party terminal application like Terminus. It simplifies SSH connection management and credential handling, especially if you're accessing multiple machines at once.
+
+2. Creating a New User
+Once inside the terminal, it's best practice to create a new user instead of working directly as root.
+
+(Note: You can automate some of this through startup scripts under the "Additional Options" section when setting up Lightsail, but we’ll do it manually for learning purposes.)
+
+Run the following command to add a user:
+
+bash
+Copy
+Edit
+sudo adduser username
+Replace username with your choice (I’ll use dev in this guide).
+
+You can simply press Enter through the prompts to leave the additional fields blank.
+
+Next, add the new user to the sudo group so they have administrative permissions:
+
+bash
+Copy
+Edit
+sudo usermod -aG sudo username
+Now switch to the new user:
+
+bash
+Copy
+Edit
+sudo su username
+3. Setting the Hostname and Hosts File
+Next, let's configure your server's hostname and hosts file to prepare for using a domain name (either now or later).
+
+Update the Hostname
+Open the hostname file:
+
+bash
+Copy
+Edit
+sudo nano /etc/hostname
+Replace the default IP address or random hostname with your domain name, if you already have one. If not, you can update this later when you get a domain.
+(Insert image of the nano editor here)
+
+Example of the hostname after editing:
+
+Copy
+Edit
+mydomain.com
+Update the Hosts File
+Now update the hosts file to match your new hostname:
+
+bash
+Copy
+Edit
+sudo nano /etc/hosts
+Add a line like this (replacing with your server’s public IP and domain):
+
+pgsql
+Copy
+Edit
+your-server-ip   yourdomain.com
+4. System Update and Reboot
+Before installing any web services, update and upgrade the system:
+
+bash
+Copy
+Edit
+sudo apt update -y && sudo apt upgrade -y
+During the upgrade, you may see a pink configuration screen. If you do, simply press Enter to proceed.
+
+Tip: If you're on a smaller VPS, this might take some time. Take a quick break if needed!
+
+After updating, reboot the server:
+
+bash
+Copy
+Edit
+sudo reboot
+Once it restarts, reconnect using the AWS Lightsail terminal or Terminus.
+
+5. Install and Configure Fail2Ban
+Fail2Ban helps protect your server by banning IPs that fail login attempts repeatedly.
+
+Install it:
+
+bash
+Copy
+Edit
+sudo apt install fail2ban -y
+Start, enable, and check the service with:
+
+bash
+Copy
+Edit
+sudo systemctl start fail2ban && sudo systemctl enable fail2ban && sudo systemctl status fail2ban
+Configure Fail2Ban
+Instead of editing the main config file directly, create a local copy:
+
+bash
+Copy
+Edit
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+sudo nano /etc/fail2ban/jail.local
+In jail.local, you can customize settings such as:
+
+ini
+Copy
+Edit
+[DEFAULT]
+bantime = 3600        # 1 hour ban
+findtime = 600        # 10 minutes window
+maxretry = 5          # 5 failed attempts allowed
+ignoreip = 127.0.0.1/8 # Whitelist localhost
+After editing, restart Fail2Ban:
+
+bash
+Copy
+Edit
+sudo systemctl restart fail2ban
+6. Install Apache Web Server
+Now let’s install Apache, our web server:
+
+bash
+Copy
+Edit
+sudo apt install apache2 -y
+After installation, visit your server’s IP address or domain in your browser. You should see Apache’s default welcome page, confirming it’s working!
+
+7. Set Up a Database (MariaDB)
+We’ll set up MariaDB (a fork of MySQL) to create a database for WordPress.
+
+Enter the MariaDB shell:
+
+bash
+Copy
+Edit
+sudo mariadb
+Then run the following SQL commands:
+
+sql
+Copy
+Edit
+CREATE DATABASE wordpress_db DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+SHOW DATABASES;
+GRANT ALL PRIVILEGES ON wordpress_db.* TO 'wordpress_user'@'localhost' IDENTIFIED BY 'secret_password';
+FLUSH PRIVILEGES;
+EXIT;
+8. Install WordPress
+Download and set up WordPress:
+
+bash
+Copy
+Edit
+wget https://wordpress.org/latest.zip
+sudo apt install unzip
+unzip latest.zip
+sudo chown -R www-data:www-data wordpress
+mv wordpress /var/www
+Configure Apache for WordPress
+Create a new Apache site configuration:
+
+bash
+Copy
+Edit
+sudo nano /etc/apache2/sites-available/wordpress.conf
+Add the following:
+
+apache
+Copy
+Edit
+<VirtualHost *:80>
+    DocumentRoot /var/www/wordpress
+    <Directory /var/www/wordpress>
+        Options FollowSymLinks
+        AllowOverride Limit Options FileInfo
+        DirectoryIndex index.php
+        Require all granted
+    </Directory>
+    <Directory /var/www/wordpress/wp-content>
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+Disable the default site and enable your new WordPress site:
+
+bash
+Copy
+Edit
+sudo a2dissite 000-default.conf
+sudo a2ensite wordpress.conf
+Install Required PHP Modules
+bash
+Copy
+Edit
+sudo apt install libapache2-mod-php php-curl php-gd php-intl php-mbstring php-mysql php-soap php-xml php-xmlrpc php-zip
+sudo a2enmod rewrite
+sudo systemctl restart apache2
+9. Final Step: Access WordPress
+Now visit your domain or IP address in a browser. You should be greeted with the WordPress installation page! To access the admin panel later, simply add /admin to the end of your URL.
+
+Coming Up Next
+In the next section, we’ll cover connecting a custom domain name, updating your server configuration, and setting up DNS records.
+
