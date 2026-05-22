@@ -180,6 +180,7 @@ if has_port 22 && command -v sshpass >/dev/null 2>&1; then
       "${U}@${GW}" "exit" >/dev/null 2>&1
     if [ $? -eq 0 ]; then
       add CRIT "SSH default credentials accepted: ${U}/${P} on ${GW}."
+      SSH_GOOD="${U}:${P}"
       break
     fi
   done
@@ -287,6 +288,192 @@ note ""
 traceroute -n -w 1 -q 1 -m 4 8.8.8.8 > "${RAW_DIR}/traceroute.txt" 2>&1 || true
 
 # =====================================================================
+# 7.5) Call-home sniff + threat-list correlation
+# =====================================================================
+# Passively captures broadcast / multicast / locally-visible traffic
+# sourced from the gateway for ~60s, plus any DNS replies the router
+# returns to our resolver. Extracts destination IPs and DNS query
+# names, then correlates against:
+#   - threatlist/aggregated_ips.txt        (live feeds, if updated)
+#   - threatlist/aggregated_domains.txt    (live feeds, if updated)
+#   - threatlist/baseline_ips.txt          (shipped)
+#   - threatlist/baseline_domains.txt      (shipped)
+#   - threatlist/vendor_telemetry.txt      (call-home reference)
+#
+# On a switched LAN we won't see all of the router's egress traffic —
+# only what's broadcast/multicast or destined to our MAC. That's still
+# enough to catch SSDP/mDNS chatter, DHCP option leaks, syslog
+# broadcasts, and DNS-replied destinations.
+
+TL_DIR="/root/payload/threatlist"
+[ -d "${TL_DIR}" ] || TL_DIR="$(dirname "$0")/threatlist"
+
+IP_FEED="${TL_DIR}/aggregated_ips.txt"
+DOM_FEED="${TL_DIR}/aggregated_domains.txt"
+[ -f "${IP_FEED}" ]  || IP_FEED="${TL_DIR}/baseline_ips.txt"
+[ -f "${DOM_FEED}" ] || DOM_FEED="${TL_DIR}/baseline_domains.txt"
+VEND_FEED="${TL_DIR}/vendor_telemetry.txt"
+
+SNIFF_PCAP="${RAW_DIR}/sniff.pcap"
+SNIFF_IPS="${RAW_DIR}/sniff_ips.txt"
+SNIFF_DOMS="${RAW_DIR}/sniff_domains.txt"
+: > "${SNIFF_IPS}"; : > "${SNIFF_DOMS}"
+
+GW_MAC="$(ip neigh show "${GW}" 2>/dev/null | awk '{print $5}' | head -n1)"
+
+LED ATTACK
+log "Sniffing call-home traffic for 60s (gateway MAC ${GW_MAC:-unknown})..."
+
+if command -v tcpdump >/dev/null 2>&1; then
+  # Capture anything sourced from the gateway IP or its MAC,
+  # plus broadcast/multicast (mDNS, SSDP, syslog).
+  FILTER="src host ${GW}"
+  [ -n "${GW_MAC}" ] && FILTER="${FILTER} or ether src ${GW_MAC}"
+  FILTER="${FILTER} or udp port 5353 or udp port 1900 or udp port 514 or port 53"
+
+  timeout 60 tcpdump -i eth0 -nn -s 0 -w "${SNIFF_PCAP}" \
+    "${FILTER}" >/dev/null 2>&1 &
+  TCPDUMP_PID=$!
+
+  # In parallel: kick the resolver so we observe DNS replies through the GW
+  for h in $(awk -F'|' '/^[a-z0-9]/ {print $1}' "${VEND_FEED}" 2>/dev/null | head -n 30); do
+    nslookup "${h}" "${GW}" >/dev/null 2>&1 &
+  done
+  wait ${TCPDUMP_PID} 2>/dev/null
+
+  # Extract destination IPs (anything the gateway talks TO)
+  tcpdump -nn -r "${SNIFF_PCAP}" 2>/dev/null \
+    | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' \
+    | sort -u > "${SNIFF_IPS}"
+
+  # Extract DNS query / answer names
+  tcpdump -nn -r "${SNIFF_PCAP}" 2>/dev/null \
+    | grep -Eo '[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+' \
+    | tr 'A-Z' 'a-z' \
+    | sort -u > "${SNIFF_DOMS}"
+else
+  log "tcpdump not present — falling back to ARP/neighbor enumeration only."
+  # Best-effort: who is the gateway talking to in our ARP table
+  ip neigh > "${RAW_DIR}/neigh.txt" 2>/dev/null
+  awk '{print $1}' "${RAW_DIR}/neigh.txt" \
+    | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' > "${SNIFF_IPS}"
+fi
+
+note "## 3. Call-home traffic observation"
+note "  Sniff window  : 60s"
+note "  Threat feed   : $(basename "${IP_FEED}") + $(basename "${DOM_FEED}")"
+if [ -f "${TL_DIR}/aggregated.meta" ]; then
+  AGE="$(grep '^updated_utc=' "${TL_DIR}/aggregated.meta" | cut -d= -f2)"
+  CNT_IP="$(grep '^ip_count=' "${TL_DIR}/aggregated.meta" | cut -d= -f2)"
+  CNT_D="$(grep '^domain_count=' "${TL_DIR}/aggregated.meta" | cut -d= -f2)"
+  note "  Feed updated  : ${AGE}"
+  note "  Feed size     : ${CNT_IP} IPs, ${CNT_D} domains"
+else
+  add LOW "Threat feed has never been updated — run threatlist/update_threatlist.sh to pull live IOCs."
+  note "  Feed updated  : NEVER (baseline only)"
+fi
+note "  Observed IPs  : $(wc -l < "${SNIFF_IPS}")"
+note "  Observed names: $(wc -l < "${SNIFF_DOMS}")"
+note ""
+
+# --- IP correlation -------------------------------------------------
+# Plain-IP match (CIDR matching is approximated: we match on /24 by
+# checking if any feed line shares the same first three octets when
+# the feed line is a CIDR). Exact-IP matches are detected directly.
+match_ip() {
+  local needle="$1"
+  grep -Fx "${needle}" "${IP_FEED}" >/dev/null 2>&1 && { echo "exact"; return; }
+  local three="${needle%.*}"
+  grep -E "^${three}\." "${IP_FEED}" >/dev/null 2>&1 && { echo "range"; return; }
+  echo ""
+}
+
+while IFS= read -r ip; do
+  [ -z "${ip}" ] && continue
+  case "${ip}" in
+    0.0.0.0|255.255.255.255) continue ;;
+    "${GW}"|"${MY_IP%/*}")    continue ;;
+  esac
+  m="$(match_ip "${ip}")"
+  if [ "${m}" = "exact" ]; then
+    add CRIT "Gateway observed contacting KNOWN-BAD IP ${ip} (exact match in threat feed)."
+  elif [ "${m}" = "range" ]; then
+    add HIGH "Gateway observed contacting IP ${ip} inside a known-bad /24 in the threat feed."
+  fi
+done < "${SNIFF_IPS}"
+
+# --- Domain correlation --------------------------------------------
+# Suffix match: an observed name matches a feed entry if the feed
+# entry equals the name or is a dot-suffix of the name.
+match_domain() {
+  local needle="$1" feed="$2"
+  local n
+  n="$(echo "${needle}" | tr 'A-Z' 'a-z')"
+  # exact
+  grep -Fxq "${n}" "${feed}" 2>/dev/null && { echo "exact"; return; }
+  # suffix: walk components
+  while [ -n "${n}" ]; do
+    grep -Fxq "${n}" "${feed}" 2>/dev/null && { echo "suffix"; return; }
+    case "${n}" in
+      *.*) n="${n#*.}" ;;
+      *)   break ;;
+    esac
+  done
+  echo ""
+}
+
+while IFS= read -r dom; do
+  [ -z "${dom}" ] && continue
+  [ "${#dom}" -lt 4 ] && continue
+  # threat-feed match
+  m="$(match_domain "${dom}" "${DOM_FEED}")"
+  if [ -n "${m}" ]; then
+    add CRIT "Gateway DNS observed for KNOWN-BAD domain '${dom}' (${m} match in threat feed)."
+    continue
+  fi
+  # vendor-telemetry match → MEDIUM
+  if [ -f "${VEND_FEED}" ]; then
+    while IFS='|' read -r v_dom v_vendor v_purpose; do
+      [ -z "${v_dom}" ] && continue
+      case "${v_dom}" in \#*) continue ;; esac
+      # suffix or prefix-match (acs. / cwmp.)
+      case "${v_dom}" in
+        *.) case "${dom}" in
+              "${v_dom}"*) add MED "Gateway calling home to '${dom}' — ${v_vendor} (${v_purpose})."; break ;;
+            esac ;;
+        *)  case ".${dom}" in
+              *".${v_dom}") add MED "Gateway calling home to '${dom}' — ${v_vendor} (${v_purpose})."; break ;;
+            esac
+            [ "${dom}" = "${v_dom}" ] && { add MED "Gateway calling home to '${dom}' — ${v_vendor} (${v_purpose})."; break; }
+            ;;
+      esac
+    done < "${VEND_FEED}"
+  fi
+done < "${SNIFF_DOMS}"
+
+# --- If we have SSH on the router from the cred phase, dump conntrack --
+# (Only attempts if a SSH default-cred CRIT was just added; reuses the
+# successful pair stored in $SSH_GOOD if set above. Best-effort.)
+if [ -n "${SSH_GOOD:-}" ] && command -v sshpass >/dev/null 2>&1; then
+  U="${SSH_GOOD%%:*}"; P="${SSH_GOOD##*:}"
+  sshpass -p "${P}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -o ConnectTimeout=5 "${U}@${GW}" \
+    'cat /proc/net/nf_conntrack 2>/dev/null || cat /proc/net/ip_conntrack 2>/dev/null' \
+    > "${RAW_DIR}/conntrack.txt" 2>/dev/null
+  if [ -s "${RAW_DIR}/conntrack.txt" ]; then
+    awk '{for(i=1;i<=NF;i++) if($i ~ /^dst=/) print substr($i,5)}' \
+      "${RAW_DIR}/conntrack.txt" | sort -u > "${RAW_DIR}/conntrack_dst.txt"
+    while IFS= read -r ip; do
+      [ -z "${ip}" ] && continue
+      m="$(match_ip "${ip}")"
+      [ -n "${m}" ] && add CRIT "Router conntrack shows active flow to known-bad IP ${ip} (${m})."
+    done < "${RAW_DIR}/conntrack_dst.txt"
+  fi
+fi
+
+note ""
+
+# =====================================================================
 # 8) Render the report
 # =====================================================================
 render_bucket() {
@@ -300,7 +487,7 @@ render_bucket() {
   fi
 }
 
-note "## 3. Findings (highest severity first)"
+note "## 4. Findings (highest severity first)"
 note ""
 render_bucket "CRITICAL — fix immediately" CRIT
 render_bucket "HIGH"                       HIGH
@@ -308,7 +495,7 @@ render_bucket "MEDIUM"                     MED
 render_bucket "LOW / INFO"                 LOW
 render_bucket "Looks good"                 PASS
 
-note "## 4. Recommended hardening checklist"
+note "## 5. Recommended hardening checklist"
 note "  [ ] Disable Telnet, FTP, TFTP on the gateway."
 note "  [ ] Force HTTPS-only on the admin UI and replace self-signed certs."
 note "  [ ] Restrict admin UI / SSH to a management VLAN or specific source IPs."
@@ -320,12 +507,13 @@ note "  [ ] Disable WPS on the wireless side (out-of-scope for wired audit, but 
 note "  [ ] Keep firmware current and subscribe to the vendor's advisory feed."
 note "  [ ] Segment IoT / guest / mgmt into separate VLANs with inter-VLAN ACLs."
 note "  [ ] Enable logging to a remote syslog and review weekly."
+note "  [ ] Refresh the threat-intel feeds (threatlist/update_threatlist.sh) at least weekly."
 note ""
 
 # Score
 SCORE=$(( 100 - ${#CRIT[@]}*25 - ${#HIGH[@]}*10 - ${#MED[@]}*4 - ${#LOW[@]}*1 ))
 [ ${SCORE} -lt 0 ] && SCORE=0
-note "## 5. Overall hardening score: ${SCORE}/100"
+note "## 6. Overall hardening score: ${SCORE}/100"
 if   [ ${#CRIT[@]} -gt 0 ]; then note "  Verdict: NOT hardened — critical issues present."
 elif [ ${#HIGH[@]} -gt 0 ]; then note "  Verdict: partial — high-severity gaps remain."
 elif [ ${#MED[@]}  -gt 0 ]; then note "  Verdict: mostly hardened — minor improvements recommended."

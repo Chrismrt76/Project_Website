@@ -1,0 +1,61 @@
+# Known vendor "call-home" / telemetry / ACS endpoints.
+# A router contacting these is usually expected, but worth recording
+# and worth flagging if the customer requires a no-telemetry posture.
+# The payload reports matches here as MEDIUM / INFO, not CRITICAL.
+#
+# Format: <domain>|<vendor>|<purpose>
+
+# --- TP-Link ---
+tplinkcloud.com|TP-Link|Kasa cloud / remote mgmt
+tplinkwifi.net|TP-Link|local setup redirect
+tplinkra.com|TP-Link|range-extender telemetry
+tplinkdns.com|TP-Link|DDNS
+
+# --- Netgear ---
+routerlogin.net|Netgear|local setup redirect
+netgear.com|Netgear|firmware / telemetry
+nighthawk-app.com|Netgear|Nighthawk app
+
+# --- ASUS ---
+asuscomm.com|ASUS|AiCloud DDNS
+asuswrt.asus.com|ASUS|firmware
+asusrouter.com|ASUS|telemetry
+
+# --- D-Link ---
+mydlink.com|D-Link|cloud
+dlink.com|D-Link|firmware
+auto.mydlink.com|D-Link|telemetry
+
+# --- Linksys ---
+linksyssmartwifi.com|Linksys|cloud admin
+linksys.com|Linksys|firmware
+linksys-pnp.com|Linksys|provisioning
+
+# --- MikroTik ---
+mikrotik.com|MikroTik|firmware/cloud
+sn.mikrotik.com|MikroTik|serial check
+cloud.mikrotik.com|MikroTik|cloud DDNS
+
+# --- Ubiquiti ---
+ui.com|Ubiquiti|UniFi cloud
+ubnt.com|Ubiquiti|legacy
+device-airos.svc.ui.com|Ubiquiti|device telemetry
+
+# --- Google / Nest Wifi ---
+googleapis.com|Google|telemetry/api
+on.googlewifi.com|Google|Nest/Google Wifi
+
+# --- eero / Amazon ---
+eero.com|eero|cloud mgmt
+amazonaws.com|eero|backend (very broad, info only)
+
+# --- Plume / OpenSync ---
+plume.com|Plume|cloud mgmt
+opensync.io|Plume|cloud sync
+
+# --- TR-069 / CWMP ACS endpoints (ISP-provisioned CPE) ---
+acs.|ISP|TR-069 ACS (prefix match)
+cwmp.|ISP|TR-069 ACS (prefix match)
+
+# --- Generic firmware/update CDNs (info only) ---
+download.windowsupdate.com|MSFT|likely transit, not router

@@ -1,0 +1,19 @@
+# Baseline domain indicators shipped with the payload.
+# Stable, well-documented public references. update_threatlist.sh
+# merges this file with live feeds into aggregated_domains.txt.
+#
+# Matching is case-insensitive and uses suffix match (foo.bar matches
+# *.foo.bar). Use lowercase.
+
+# --- Sinkholes / takedown infra (router hitting these = something is wrong) ---
+sinkhole.shadowserver.org
+sinkhole.cert.pl
+sinkhole-01.abuse.ch
+sinkhole-02.abuse.ch
+botnet-sinkhole.cert.pl
+
+# --- Historical Mirai / Mozi / Realtek-SDK C2 domains (rotates;
+#     keep static known-bad here, update via feeds for current ones) ---
+# (intentionally minimal — pull live feeds for the moving targets)
+
+# --- Add your own static domain IOCs below ---

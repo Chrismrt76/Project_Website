@@ -1,0 +1,21 @@
+# Baseline IP / CIDR indicators shipped with the payload.
+# These are stable, well-documented public references. Add your own
+# below. update_threatlist.sh merges this file with live feeds into
+# aggregated_ips.txt at runtime.
+#
+# Format: one IP or CIDR per line. Optional comment after '#'.
+
+# --- Known DNS sinkholes (a router hitting these is itself a finding;
+#     it usually means an upstream box is infected and being redirected) ---
+192.42.116.41        # sinkhole.shadowserver.org
+204.13.164.118       # Microsoft DCU sinkhole
+70.85.31.226         # Conficker sinkhole (legacy)
+
+# --- Bogon / reserved that should never appear as a router-external dst ---
+0.0.0.0/8
+127.0.0.0/8
+169.254.0.0/16
+198.18.0.0/15
+240.0.0.0/4
+
+# --- Add your own static IOCs below ---

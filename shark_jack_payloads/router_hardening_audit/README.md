@@ -21,8 +21,64 @@ loot directory.
 6. **Vendor fingerprint** — TP-Link / Netgear / OpenWrt / MikroTik /
    pfSense / FortiGate / Zyxel / UniFi from the login page.
 7. **DHCP-handed DNS sanity** — flags weird DNS handouts.
-8. **Score & checklist** — a 0–100 score and a copy/paste hardening
+8. **Call-home traffic correlation** — passively sniffs ~60s of traffic
+   from the gateway (broadcast/multicast + locally-visible flows), plus
+   DNS replies, extracts destination IPs and queried domains, and
+   correlates against an updatable threat-intel list:
+     - exact / CIDR match in feed → **CRITICAL**
+     - vendor-telemetry / call-home host → **MEDIUM**
+   If the cred-probe phase recovered SSH on the router, the script
+   also dumps `/proc/net/nf_conntrack` and correlates its destinations.
+9. **Score & checklist** — a 0–100 score and a copy/paste hardening
    checklist at the bottom of the report.
+
+## Threat-intel feeds (the "known threat actor list")
+
+Everything lives under `threatlist/`:
+
+```
+threatlist/
+├── sources.conf            # feed URLs (edit to add/remove)
+├── baseline_ips.txt        # static IOCs shipped in repo (your edits go here)
+├── baseline_domains.txt    # static domain IOCs
+├── vendor_telemetry.txt    # known router call-home endpoints (info)
+├── update_threatlist.sh    # pulls every feed, merges with baselines
+├── aggregated_ips.txt      # ← generated; used by payload.sh
+├── aggregated_domains.txt  # ← generated; used by payload.sh
+└── aggregated.meta         # ← generated; timestamp + counts
+```
+
+### Feeds pulled by default (all free, no key required)
+
+- abuse.ch Feodo Tracker (botnet C2 IPs)
+- abuse.ch ThreatFox (multi-malware IOCs)
+- abuse.ch SSLBL (TLS-cert-based C2)
+- abuse.ch URLhaus (malware delivery URLs)
+- FireHOL Level 1 (high-confidence aggregated blocklist)
+- Emerging Threats compromised-IPs
+- CINS Army (CINSscore badguys)
+- OpenPhish community feed
+- Spamhaus DROP / EDROP
+
+### Updating the list
+
+Anywhere with `curl` (your laptop, the Shark Jack while online):
+
+```
+cd threatlist
+./update_threatlist.sh           # pull all feeds, merge with baseline
+./update_threatlist.sh --dry-run # show what would be fetched
+```
+
+Then copy `aggregated_ips.txt`, `aggregated_domains.txt`, and
+`aggregated.meta` to the Shark Jack at `/root/payload/threatlist/`. The
+payload will pick them up automatically; if they're missing, it falls
+back to the baselines.
+
+To **add your own indicators**, append IPs/CIDRs to `baseline_ips.txt`
+or domains to `baseline_domains.txt`, then re-run the updater. To
+**add a new feed**, add a line to `sources.conf` in the form
+`ip|<url>` or `domain|<url>` or `csv_ip|<url>` or `urlhaus|<url>`.
 
 ## Install
 
@@ -46,8 +102,11 @@ audit still runs without them; it just skips those probes.
 To add the optional helpers (recommended):
 
 ```
-opkg update && opkg install sshpass expect snmp-utils
+opkg update && opkg install sshpass expect snmp-utils tcpdump
 ```
+
+`tcpdump` is what powers the call-home sniff phase — without it, the
+correlation falls back to ARP/neighbor enumeration only.
 
 ## LED legend
 
@@ -79,7 +138,11 @@ router_audit/<timestamp>/
     ├── http_body.txt
     ├── tls.txt
     ├── snmp.txt
-    └── traceroute.txt
+    ├── traceroute.txt
+    ├── sniff.pcap          # 60s capture from the call-home phase
+    ├── sniff_ips.txt       # extracted destination IPs
+    ├── sniff_domains.txt   # extracted DNS query/answer names
+    └── conntrack.txt       # router /proc/net/nf_conntrack (if SSH worked)
 ```
 
 ## Report format
