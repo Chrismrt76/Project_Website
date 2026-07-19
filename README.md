@@ -35,11 +35,3 @@ If there's enough interest, I’ll create detailed guides for setting up on Digi
 Next up:
 We'll jump right into launching your first VPS and setting up your website!
 [Setup Amazon LightSail](https://github.com/Chrismrt76/Project_Website/blob/main/Amazon_LightSail)
-
-## Security Portfolio
-
-### Hack Smarter Labs Web Application Assessment
-
-An authorized assessment of a deliberately vulnerable course application, including an executive summary, severity-ranked findings, reproducible evidence, and practical remediation guidance.
-
-[Read the professional capstone report](security-assessments/hack-smarter-capstone/README.md)
