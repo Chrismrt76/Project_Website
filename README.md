@@ -42,4 +42,4 @@ We'll jump right into launching your first VPS and setting up your website!
 
 An authorized assessment of a deliberately vulnerable course application, including an executive summary, severity-ranked findings, reproducible evidence, and practical remediation guidance.
 
-[Read the professional capstone report](security-assessments/hack-smarter-capstone/README.md)
+[Browse lab security reports](Reports/README.md)
